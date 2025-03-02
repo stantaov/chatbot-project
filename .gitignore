@@ -5,6 +5,7 @@
 
 # Secrets
 
+chat_logs/
 .env
 
 # User-specific files
