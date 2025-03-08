@@ -5,6 +5,8 @@
 
 # Secrets
 
+chroma_db/
+pdf_store/
 chat_logs/
 .env
 
