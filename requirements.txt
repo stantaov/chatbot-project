@@ -14,3 +14,5 @@ chromadb
 pypdf
 cryptography==41.0.2
 python-multipart
+azure-core==1.32.0
+azure-storage-blob==12.24.0
