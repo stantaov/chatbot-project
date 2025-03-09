@@ -40,12 +40,14 @@ Store your `OPENAI_API_KEY` and **Database Credentials** in a `.env` file.
 Your `.env` file should look like this:
 
 ```env
-OPENAI_API_KEY=YOUR-OPENAI-API-KEY
-DB_NAME=YOUR-DB-NAME
-DB_USER=YOUR-DB-USER
-DB_PASSWORD=YOUR-DB-PASSWORD
-DB_HOST=YOUR-DB-HOST
-DB_PORT=YOUR-DB-PORT
+OPENAI_API_KEY=
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=
+DB_PORT=
+AZURE_STORAGE_SAS_URL=
+AZURE_STORAGE_CONTAINER=
 ```
 
 #### **Step 2: Install Dependencies**

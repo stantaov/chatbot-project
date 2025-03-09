@@ -18,6 +18,7 @@ from langchain.chains import create_history_aware_retriever, create_retrieval_ch
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.messages import HumanMessage, AIMessage
 import chromadb
+from azure.storage.blob import BlobClient
 
 load_dotenv()
 
@@ -35,6 +36,11 @@ model = "gpt-3.5-turbo"
 
 # VECTOR_DB_DIR = "chromadb"
 # os.makedirs(VECTOR_DB_DIR, exist_ok=True)
+
+storage_account_sas_url = os.environ.get("AZURE_STORAGE_SAS_URL")
+storage_container_name = os.environ.get("AZURE_STORAGE_CONTAINER")
+storage_resource_uri = storage_account_sas_url.split('?')[0]
+token = storage_account_sas_url.split('?')[1]
 
 llm = ChatOpenAI(model=model)
 
@@ -115,10 +121,18 @@ async def load_chat(db: psycopg2.extensions.connection = Depends(get_db)):
         records = []
         for row in rows:
             chat_id, name, file_path, pdf_name, pdf_path, pdf_uuid= row["id"], row["name"], row["file_path"], row["pdf_name"], row["pdf_path"], row["pdf_uuid"]
-            if os.path.exists(file_path):
-                with open(file_path, "r", encoding="utf-8") as f:
-                    messages = json.load(f)
+
+            blob_sas_url = f"{storage_resource_uri}/{storage_container_name}/{file_path}?{token}"
+            blob_client = BlobClient.from_blob_url(blob_sas_url)
+
+            if blob_client.exists():
+                blob_data = blob_client.download_blob().readall()
+                messages = json.loads(blob_data)
                 records.append({"id": chat_id, "chat_name": name, "messages": messages, "pdf_name":pdf_name, "pdf_path":pdf_path, "pdf_uuid":pdf_uuid})
+            # if os.path.exists(file_path):
+            #     with open(file_path, "r", encoding="utf-8") as f:
+            #         messages = json.load(f)
+            #     records.append({"id": chat_id, "chat_name": name, "messages": messages, "pdf_name":pdf_name, "pdf_path":pdf_path, "pdf_uuid":pdf_uuid})
 
         return records
 
@@ -129,11 +143,16 @@ async def load_chat(db: psycopg2.extensions.connection = Depends(get_db)):
 async def save_chat(request: SaveChatRequest, db: psycopg2.extensions.connection = Depends(get_db)):
     try:
         file_path = f"chat_logs/{request.chat_id}.json"
-        os.makedirs("chat_logs", exist_ok=True)
+        # os.makedirs("chat_logs", exist_ok=True)
         
         # Save messages to file
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(request.messages, f, ensure_ascii=False, indent=4)
+        # with open(file_path, "w", encoding="utf-8") as f:
+        #     json.dump(request.messages, f, ensure_ascii=False, indent=4)
+
+        blob_sas_url = f"{storage_resource_uri}/{storage_container_name}/{file_path}?{token}"
+        blob_client = BlobClient.from_blob_url(blob_sas_url)
+        messages_data = json.dumps(request.messages, ensure_ascii=False, indent=4)
+        blob_client.upload_blob(messages_data, overwrite=True)
         
         # Insert or update database record
         with db.cursor() as cursor:
@@ -160,10 +179,11 @@ async def delete_chat(request: DeleteChatRequest, db: psycopg2.extensions.connec
         # Retrieve the file path before deleting the record
         file_path = None
         with db.cursor() as cursor:
-            cursor.execute("SELECT file_path FROM advanced_chats WHERE id = %s", (request.chat_id,))
+            cursor.execute("SELECT file_path, pdf_path FROM advanced_chats WHERE id = %s", (request.chat_id,))
             result = cursor.fetchone()
             if result:
                 file_path = result[0]
+                pdf_path = result[1]
             else:
                 raise HTTPException(status_code=404, detail="Chat not found")
 
@@ -173,8 +193,20 @@ async def delete_chat(request: DeleteChatRequest, db: psycopg2.extensions.connec
         db.commit()
 
         # Delete the associated file, if it exists
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
+        # if file_path and os.path.exists(file_path):
+        #     os.remove(file_path)
+        
+        if file_path:
+            blob_sas_url = f"{storage_resource_uri}/{storage_container_name}/{file_path}?{token}"
+            blob_client = BlobClient.from_blob_url(blob_sas_url)
+            if blob_client.exists():
+                blob_client.delete_blob()
+
+        if pdf_path:
+            blob_sas_url = f"{storage_resource_uri}/{storage_container_name}/{pdf_path}?{token}"
+            blob_client = BlobClient.from_blob_url(blob_sas_url)
+            if blob_client.exists():
+                blob_client.delete_blob()
 
         return {"message": "Chat deleted successfully"}
 
@@ -199,6 +231,9 @@ async def upload_pdf(file: UploadFile = File(...)):
 
         with open(file_path, "wb") as f:
             f.write(await file.read())
+        blob_sas_url = f"{storage_resource_uri}/{storage_container_name}/{file_path}?{token}"
+        blob_client = BlobClient.from_blob_url(blob_sas_url)
+        blob_client.upload_blob(file_path, overwrite=True)
 
         # Load and process PDF
         loader = PyPDFLoader(file_path)
@@ -212,6 +247,8 @@ async def upload_pdf(file: UploadFile = File(...)):
             ids=[str(uuid.uuid4()) for _ in texts],
             metadatas=[{"pdf_uuid": pdf_uuid} for _ in texts]    
         )
+
+        os.remove(file_path)
 
         return {"message": "File uploaded successfully", "pdf_path": file_path, "pdf_uuid":pdf_uuid}
     except Exception as e:
