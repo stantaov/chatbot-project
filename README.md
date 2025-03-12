@@ -18,24 +18,8 @@ This enhancement integrates seamlessly with our existing setup—Streamlit for t
 
 ### How to Get Started
 
-In this stage, we will create a **new** table called `advanced_chats` in the database using the following schema:
-
-```sql
-CREATE TABLE IF NOT EXISTS advanced_chats (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    pdf_path TEXT,
-    pdf_name TEXT,
-    pdf_uuid TEXT
-);
-```
-
-Alternatively, you can **add the extra columns** to the `chats` table created in Stage 3 instead of creating a new table.
-
 #### **Step 1: Set Up Environment Variables**
-Store your `OPENAI_API_KEY` and **Database Credentials** in a `.env` file.
+Store your `OPENAI_API_KEY`, **Database Credentials** and **Storage SAS token** in a `.env` file.
 
 Your `.env` file should look like this:
 
@@ -50,34 +34,9 @@ AZURE_STORAGE_SAS_URL=
 AZURE_STORAGE_CONTAINER=
 ```
 
-#### **Step 2: Install Dependencies**
-To use **ChromaDB**, install it via `pip`. The necessary packages are listed in `requirements.txt`, so you can install everything by running:
+#### **Step 2: Start Sartup Script**
 
 ```bash
-pip install -r requirements.txt
-```
-
-#### **Step 3: Start ChromaDB**
-To enable retrieval, we need to start ChromaDB. Use the following command to start the Chroma server:
-
-```bash
-chroma run --path /db_path
-```
-
-Replace `/db_path` with the directory where you want to store the data, e.g., `chromadb`.
-
-#### **Step 4: Start the Backend**
-Next, start the FastAPI backend:
-
-```bash
-uvicorn backend:app --reload --port 5000
-```
-
-> **Note:** Compared to the last stage, we have added the `--port 5000` parameter. Since ChromaDB uses port **8000** by default, this prevents a port conflict.
-
-#### **Step 5: Start the Streamlit App**
-Finally, run the Streamlit app:
-
-```bash
-streamlit run chatbot.py
+chmod +x setup.sh
+./setup.sh <PAT_token> <repo_url> <branch_name> <password>
 ```
