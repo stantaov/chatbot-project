@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if the correct number of arguments is provided
-if [ $# -ne 4 ]; then
-    echo "Usage: $0 <PAT_token> <repo_url> <branch_name> <password>"
+if [ $# -ne 5 ]; then
+    echo "Usage: $0 <PAT_token> <repo_url> <branch_name> <password> <DB_host>"
     exit 1
 fi
 
@@ -14,10 +14,12 @@ PASSWORD="$4"
 REPO_NAME=$(basename "$REPO_URL" .git)
 USER=$(whoami)
 HOME_DIR=$(eval echo ~$USER)
+DB_HOST="$5"
 
 # Set up PostgreSQL database
 echo "Setting up database..."
-sudo -u postgres psql -c "ALTER USER postgres PASSWORD '$PASSWORD'"
+echo "$DB_HOST:5432:postgres:azureadmin:$PASSWORD" > $HOME/.pgpass
+chmod 600 $HOME/.pgpass
 if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw project; then
     sudo -u postgres psql -c "CREATE DATABASE project"
 else
