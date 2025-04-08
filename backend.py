@@ -17,43 +17,62 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.messages import HumanMessage, AIMessage
-import chromadb
 from azure.storage.blob import BlobClient
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
+import chromadb
 
 load_dotenv()
 
+keyVaultName = os.environ["KEY_VAULT_NAME"]
+KVUri = f"https://{keyVaultName}.vault.azure.net"
+
+credential = DefaultAzureCredential()
+client = SecretClient(vault_url=KVUri, credential=credential)
+
+DB_NAME = client.get_secret('PROJ-DB-NAME').value
+DB_USER = client.get_secret('PROJ-DB-USER').value
+DB_PASSWORD = client.get_secret('PROJ-DB-PASSWORD').value
+DB_HOST = client.get_secret('PROJ-DB-HOST').value
+DB_PORT = client.get_secret('PROJ-DB-PORT').value
+OPENAI_API_KEY = client.get_secret('PROJ-OPENAI-API-KEY').value
+AZURE_STORAGE_SAS_URL = client.get_secret('PROJ-AZURE-STORAGE-SAS-URL').value
+AZURE_STORAGE_CONTAINER = client.get_secret('PROJ-AZURE-STORAGE-CONTAINER').value
+CHROMADB_HOST = client.get_secret('PROJ-CHROMADB-HOST').value
+CHROMADB_PORT = client.get_secret('PROJ-CHROMADB-PORT').value
+
+
 DB_CONFIG = {
-    "dbname": os.environ.get("DB_NAME"),
-    "user": os.environ.get("DB_USER"),
-    "password": os.environ.get("DB_PASSWORD"),
-    "host": os.environ.get("DB_HOST"),
-    "port": os.environ.get("DB_PORT"),
+    "dbname": DB_NAME,
+    "user": DB_USER,
+    "password": DB_PASSWORD,
+    "host": DB_HOST,
+    "port": DB_PORT,
 }
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 model = "gpt-3.5-turbo"
 
 # VECTOR_DB_DIR = "chromadb"
 # os.makedirs(VECTOR_DB_DIR, exist_ok=True)
 
-storage_account_sas_url = os.environ.get("AZURE_STORAGE_SAS_URL")
-storage_container_name = os.environ.get("AZURE_STORAGE_CONTAINER")
-storage_resource_uri = storage_account_sas_url.split('?')[0]
-token = storage_account_sas_url.split('?')[1]
-
-llm = ChatOpenAI(model=model)
+llm = ChatOpenAI(model=model, api_key=OPENAI_API_KEY)
 
 # LangChain setup
-embedding_function = OpenAIEmbeddings()
-chroma_client = chromadb.HttpClient(host='localhost', port=8000)
+embedding_function = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
+chroma_client = chromadb.HttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
 collection = chroma_client.get_or_create_collection("langchain")
 vectorstore = Chroma(
-    client=chroma_client,
-    collection_name="langchain",
-    embedding_function=embedding_function,
+            client=chroma_client,
+            collection_name="langchain",
+            embedding_function=embedding_function,
 )
 
+storage_account_sas_url = AZURE_STORAGE_SAS_URL
+storage_container_name = AZURE_STORAGE_CONTAINER
+storage_resource_uri = storage_account_sas_url.split('?')[0]
+token = storage_account_sas_url.split('?')[1]
 
 app = FastAPI()
 
@@ -333,3 +352,4 @@ async def rag_chat(request: RAGChatRequest):
 
     # Use StreamingResponse to return
     return StreamingResponse(stream_response(), media_type="text/plain")
+
