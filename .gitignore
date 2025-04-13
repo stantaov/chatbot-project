@@ -9,6 +9,8 @@ chroma_db/
 pdf_store/
 chat_logs/
 .env
+terraform/.terraform
+terraform/ssh-keys
 
 # User-specific files
 *.rsuser
