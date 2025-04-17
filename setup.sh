@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if the correct number of arguments is provided
-if [ $# -ne 5 ]; then
-    echo "Usage: $0 <PAT_token> <repo_url> <branch_name> <password> <DB_host>"
+if [ $# -ne 4 ]; then
+    echo "Usage: $0 <PAT_token> <repo_url> <branch_name> <key_vault_name>"
     exit 1
 fi
 
@@ -10,30 +10,10 @@ fi
 PAT_TOKEN="$1"
 REPO_URL="$2"
 BRANCH_NAME="$3"
-PASSWORD="$4"
 REPO_NAME=$(basename "$REPO_URL" .git)
 USER=$(whoami)
 HOME_DIR=$(eval echo ~$USER)
-DB_HOST="$5"
-
-# Set up PostgreSQL database
-echo "Setting up database..."
-echo "$DB_HOST:5432:postgres:azureadmin:$PASSWORD" > $HOME/.pgpass
-chmod 600 $HOME/.pgpass
-if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw project; then
-    sudo -u postgres psql -c "CREATE DATABASE project"
-else
-    echo "Database 'project' already exists"
-fi
-sudo -u postgres psql -d project -c "CREATE TABLE IF NOT EXISTS advanced_chats (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    pdf_path TEXT,
-    pdf_name TEXT,
-    pdf_uuid TEXT
-);"
+KEY_VAULT_NAME="$4"
 
 # Set up Conda environment
 echo "Setting up conda environment..."
@@ -65,6 +45,10 @@ else
     echo "No requirements.txt found"
 fi
 
+sudo -u "azureuser tee /home/azureuser/$REPO_NAME/.env" <<EOF
+KEY_VAULT_NAME=$KEY_VAULT_NAME
+EOF
+
 # Create systemd services
 echo "Creating systemd services..."
 cat <<EOF | sudo tee /etc/systemd/system/chromadb.service
@@ -76,23 +60,7 @@ After=network.target
 Type=simple
 User=$USER
 WorkingDirectory=$HOME_DIR/$REPO_NAME
-ExecStart=$HOME_DIR/miniconda3/envs/project/bin/chroma run --path $HOME_DIR/$REPO_NAME/chroma_db
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-cat <<EOF | sudo tee /etc/systemd/system/backend.service
-[Unit]
-Description=backend
-After=network.target
-
-[Service]
-Type=simple
-User=$USER
-WorkingDirectory=$HOME_DIR/$REPO_NAME
-ExecStart=$HOME_DIR/miniconda3/envs/project/bin/uvicorn backend:app --reload --port 5000
+ExecStart=$HOME_DIR/miniconda3/envs/project/bin/chroma run --path $HOME_DIR/$REPO_NAME/chroma_db --host 0.0.0.0
 Restart=always
 
 [Install]
