@@ -40,7 +40,7 @@ jobs:
       # Optional: Add step to run tests here
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* .python_packages/*
+        run: zip -r release.zip ./* .python_packages/*
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
