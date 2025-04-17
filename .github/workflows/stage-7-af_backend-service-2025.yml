@@ -73,6 +73,10 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_BF32BF4BCFDB4F99AE0608CEA3D5DD88 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_39722340F2C249749B97A7EEA13E8EC1 }}
 
+      - name: Set Application Settings
+        run: |
+          az functionapp config appsettings set --name backend-service-2025 --resource-group DemoVmSDA --settings "FUNCTIONS_WORKER_RUNTIME=python" "KEY_VAULT_NAME=sdakeyvault2025" "APPINSIGHTS_INSTRUMENTATIONKEY=azurerm_application_insights.ai.instrumentation_key"
+
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
