@@ -40,7 +40,7 @@ jobs:
       # Optional: Add step to run tests here
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: zip release.zip ./* .python_packages/*
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -48,7 +48,7 @@ jobs:
           name: python-app
           path: |
             release.zip
-            !venv/
+
 
   deploy:
     runs-on: ubuntu-latest
@@ -80,4 +80,6 @@ jobs:
           app-name: 'backend-service-2025'
           slot-name: 'Production'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
           
