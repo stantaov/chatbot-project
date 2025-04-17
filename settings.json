@@ -1,7 +1,0 @@
-{
-  "appSettings": [
-    { "name": "FUNCTIONS_WORKER_RUNTIME", "value": "python" },
-    { "name": "KEY_VAULT_NAME", "value": "sdakeyvault2025" },
-    { "name": "APPINSIGHTS_INSTRUMENTATIONKEY", "value": "azurerm_application_insights.ai.instrumentation_key" }
-  ]
-}
