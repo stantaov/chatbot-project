@@ -28,17 +28,17 @@ It creates a new GitHub Actions workflow file in the `.github/workflows` directo
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # More info on Python, GitHub Actions, and Azure Functions: https://aka.ms/python-webapps-actions
 
-name: Build and deploy Python project to Azure Function App - dawei-tmp
+name: Build and deploy Python project to Azure Function App - backend-service-2025
 
 on:
   push:
     branches:
-      - main
+      - stage-7-af
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: "." # set this to the path to your web app project, defaults to the repository root
-  PYTHON_VERSION: "3.9" # set this to the python version to use (supports 3.6, 3.7, 3.8)
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
+  PYTHON_VERSION: '3.9' # set this to the python version to use (supports 3.6, 3.7, 3.8)
 
 jobs:
   build:
@@ -61,7 +61,6 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
-        # You have to add --target=".python_packages/lib/site-packages", or there will be module not found error  and the routes not be found on Azure console
         run: pip install -r requirements.txt --target=".python_packages/lib/site-packages"
 
       # Optional: Add step to run tests here
@@ -75,6 +74,7 @@ jobs:
           name: python-app
           path: |
             release.zip
+
 
   deploy:
     runs-on: ubuntu-latest
@@ -90,23 +90,26 @@ jobs:
           name: python-app
 
       - name: Unzip artifact for deployment
-        run: unzip release.zip
-
+        run: unzip release.zip     
+        
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_81BC04EA90234D6D89A6AEE7651B19BF }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_9E50D9DA56F64B459742517E41C31931 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_87283FB32FDF4603939EE398996B8AD0 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F4CEAB06A1554B2FB0AC95869EFBC883 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_BF32BF4BCFDB4F99AE0608CEA3D5DD88 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_39722340F2C249749B97A7EEA13E8EC1 }}
 
-      - name: "Deploy to Azure Functions"
+      - name: Set Application Settings
+        run: |
+          az functionapp config appsettings set --name backend-service-2025 --resource-group DemoVmSDA --settings "FUNCTIONS_WORKER_RUNTIME=python" "KEY_VAULT_NAME=sdakeyvault2025" "APPINSIGHTS_INSTRUMENTATIONKEY=azurerm_application_insights.ai.instrumentation_key"
+
+      - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
         with:
-          app-name: "dawei-tmp"
-          slot-name: "Production"
+          app-name: 'backend-service-2025'
+          slot-name: 'Production'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          # reference: https://learn.microsoft.com/en-us/answers/questions/2147153/modules-not-found-after-continuous-deployment-from
           scm-do-build-during-deployment: true
           enable-oryx-build: true
 ```
