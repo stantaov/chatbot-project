@@ -8,6 +8,7 @@ langchain
 langchain-core
 chromadb-client
 azure-storage-blob
+azure-cosmos
 azure-identity
 azure-keyvault-secrets
 pypdf
