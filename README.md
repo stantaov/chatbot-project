@@ -6,7 +6,7 @@ At this stage, we will move the chat history from files in the Blob Storage to t
 
 For the database we will Remove the `file_path` column in the `advanced_chats` table:
 ```
-CREATE TABLE IF NOT EXISTS advanced_chats (
+CREATE TABLE IF NOT EXISTS advanced_chats_new (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     -- file_path TEXT NOT null,
