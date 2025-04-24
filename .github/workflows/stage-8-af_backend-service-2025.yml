@@ -35,12 +35,12 @@ jobs:
           source venv/bin/activate
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt --target=".python_packages/lib/site-packages"
 
       # Optional: Add step to run tests here
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: zip -r release.zip ./* .python_packages/*
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -48,7 +48,6 @@ jobs:
           name: python-app
           path: |
             release.zip
-            !venv/
 
   deploy:
     runs-on: ubuntu-latest
@@ -73,6 +72,10 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_623397102CA54334A2796211C2E303C4 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_09856AB128D44FCDBDF9E41D48CA598E }}
 
+      - name: Set Application Settings
+        run: |
+         az functionapp config appsettings set --name backend-service-2025 --resource-group DemoVmSDA --settings "FUNCTIONS_WORKER_RUNTIME=python" "KEY_VAULT_NAME=sdakeyvault2025" "APPINSIGHTS_INSTRUMENTATIONKEY=azurerm_application_insights.ai.instrumentation_key"
+
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
@@ -80,4 +83,6 @@ jobs:
           app-name: 'backend-service-2025'
           slot-name: 'Production'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          scm-do-build-during-deployment: true
+          enable-oryx-build: true
           
