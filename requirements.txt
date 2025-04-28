@@ -1,5 +1,6 @@
-azure-functions
-openai
+fastapi
+uvicorn
+python-dotenv
 psycopg2-binary
 langchain-community
 langchain-openai
@@ -12,4 +13,5 @@ azure-cosmos
 azure-identity
 azure-keyvault-secrets
 pypdf
+python-multipart
 cryptography==41.0.2

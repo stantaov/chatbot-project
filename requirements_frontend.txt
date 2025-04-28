@@ -1,0 +1,5 @@
+chromadb
+streamlit
+requests
+azure-identity
+azure-keyvault-secrets
