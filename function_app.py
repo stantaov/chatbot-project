@@ -20,11 +20,12 @@ from azure.keyvault.secrets import SecretClient
 from azure.cosmos import CosmosClient, PartitionKey
 import chromadb
 
-
 keyVaultName = os.environ.get("KEY_VAULT_NAME")
 KVUri = f"https://{keyVaultName}.vault.azure.net"
 credential = DefaultAzureCredential()
 kv_client = SecretClient(vault_url=KVUri, credential=credential)
+
+
 
 DB_NAME = kv_client.get_secret('PROJ-DB-NAME').value
 DB_USER = kv_client.get_secret('PROJ-DB-USER').value
@@ -36,10 +37,10 @@ AZURE_STORAGE_SAS_URL = kv_client.get_secret('PROJ-AZURE-STORAGE-SAS-URL').value
 AZURE_STORAGE_CONTAINER = kv_client.get_secret('PROJ-AZURE-STORAGE-CONTAINER').value
 CHROMADB_HOST = kv_client.get_secret('PROJ-CHROMADB-HOST').value
 CHROMADB_PORT = kv_client.get_secret('PROJ-CHROMADB-PORT').value
-COSMOS_ENDPOINT = kv_client.get_secret('PROJ-COSMOSDB-ENDPOINT').value
-COSMOS_KEY = kv_client.get_secret('PROJ-COSMOSDB-KEY').value
-COSMOS_DATABASE = kv_client.get_secret('PROJ-COSMOSDB-DATABASE').value
-COSMOS_CONTAINER = kv_client.get_secret('PROJ-COSMOSDB-CONTAINER').value
+cosmos_endpoint = kv_client.get_secret('PROJ-COSMOSDB-ENDPOINT').value
+cosmos_key = kv_client.get_secret('PROJ-COSMOSDB-KEY').value
+cosmos_database = kv_client.get_secret('PROJ-COSMOSDB-DATABASE').value
+cosmos_container = kv_client.get_secret('PROJ-COSMOSDB-CONTAINER').value
 
 chat_client = OpenAI(api_key=OPENAI_API_KEY)
 model = "gpt-3.5-turbo"
@@ -86,9 +87,9 @@ async def load_chat(req: func.HttpRequest) -> func.HttpResponse:
             chat_id, name, pdf_name, pdf_path, pdf_uuid= row["id"], row["name"], row["pdf_name"], row["pdf_path"], row["pdf_uuid"]
 
             # Load from CosmosDB
-            client = CosmosClient(COSMOS_ENDPOINT, COSMOS_KEY)
-            database = client.get_database_client(COSMOS_DATABASE)
-            container = database.get_container_client(COSMOS_CONTAINER)
+            client = CosmosClient(cosmos_endpoint, cosmos_key)
+            database = client.get_database_client(cosmos_database)
+            container = database.get_container_client(cosmos_container)
 
             query = "SELECT * FROM c Where c.id = @chat_id"
             parameters = [{"name": "@chat_id", "value": chat_id}]
@@ -110,23 +111,24 @@ async def load_chat(req: func.HttpRequest) -> func.HttpResponse:
     
 
 @app.route(route="save_chat", methods=[func.HttpMethod.POST])
-async def save_chat(req: func.HttpRequest) -> func.HttpResponse:
+@app.cosmos_db_output(arg_name="chathistory", 
+                      database_name=cosmos_database,
+                      container_name=cosmos_container,
+                      create_if_not_exists=True,
+                      connection='COSMOSDB_CONNECTION_STRING')
+async def save_chat(req: func.HttpRequest, chathistory: func.Out[func.Document]) -> func.HttpResponse:
     db = psycopg2.connect(**DB_CONFIG)
     try:
         chat_id = req.get_json()["chat_id"]
 
         messages_data = json.dumps(req.get_json()["messages"], ensure_ascii=False, indent=4)
 
-        client = CosmosClient(COSMOS_ENDPOINT, COSMOS_KEY)
-        database = client.get_database_client(COSMOS_DATABASE)
-        container = database.get_container_client(COSMOS_CONTAINER)
-
         chat_data = {
             "id": chat_id,
             "messages": messages_data,
         }
 
-        container.upsert_item(chat_data)
+        chathistory.set(func.Document.from_dict(chat_data))
 
         # Insert or update database record
         with db.cursor() as cursor:
@@ -170,9 +172,9 @@ async def delete_chat(req: func.HttpRequest) -> func.HttpResponse:
         db.commit()
         db.close()
 
-        client = CosmosClient(COSMOS_ENDPOINT, COSMOS_KEY)
-        database = client.get_database_client(COSMOS_DATABASE)
-        container = database.get_container_client(COSMOS_CONTAINER)
+        client = CosmosClient(cosmos_endpoint, cosmos_key)
+        database = client.get_database_client(cosmos_database)
+        container = database.get_container_client(cosmos_container)
 
         container.delete_item(
             item=req.get_json()["chat_id"],           
@@ -328,4 +330,3 @@ def rag_chat(req: func.HttpRequest) -> func.HttpResponse:
     })
 
     return func.HttpResponse(response, status_code=200)
-    
