@@ -63,13 +63,40 @@ app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 @app.route(route="chat", methods=[func.HttpMethod.POST])
 def chat(req: func.HttpRequest) -> func.HttpResponse:
-    stream = chat_client.chat.completions.create(
-        model=model,
-        messages=req.get_json()['messages'],
-        # stream=True,
-    )
+    try:
+        logging.info(f"Received request: {req.get_body().decode()}")
+        
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            logging.error("OPENAI_API_KEY is not set")
+            return func.HttpResponse("Server error: API key not configured", status_code=500)
+        client = OpenAI(api_key=api_key)
+        logging.info("OpenAI client initialized")
 
-    return func.HttpResponse(stream.choices[0].message.content)
+        try:
+            data = req.get_json()
+        except ValueError as e:
+            logging.error(f"JSON parsing error: {str(e)}")
+            return func.HttpResponse("Invalid JSON payload", status_code=400)
+        
+        messages = data.get("messages")
+        if not messages:
+            logging.error("Missing 'messages' in payload")
+            return func.HttpResponse("Missing 'messages' in payload", status_code=400)
+        
+        model = "o3-mini" 
+        logging.info(f"Using model: {model}")
+
+        stream = client.chat.completions.create(
+            model=model,
+            messages=messages
+        )
+        logging.info("API call successful")
+        
+        return func.HttpResponse(stream.choices[0].message.content)
+    except Exception as e:
+        logging.error(f"Error in chat function: {str(e)}")
+        return func.HttpResponse(f"Internal server error: {str(e)}", status_code=500)
 
 
 @app.route(route="load_chat", methods=[func.HttpMethod.GET])
