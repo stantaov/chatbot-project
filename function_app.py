@@ -66,7 +66,7 @@ def chat(req: func.HttpRequest) -> func.HttpResponse:
     try:
         logging.info(f"Received request: {req.get_body().decode()}")
         
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = OPENAI_API_KEY
         if not api_key:
             logging.error("OPENAI_API_KEY is not set")
             return func.HttpResponse("Server error: API key not configured", status_code=500)
