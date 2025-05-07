@@ -210,7 +210,7 @@ async def delete_chat(request: DeleteChatRequest, db: psycopg2.extensions.connec
 
         # Delete the record from the database
         with db.cursor() as cursor:
-            cursor.execute("DELETE FROM advanced_chats WHERE id = %s", (request.chat_id,))
+            cursor.execute("DELETE FROM advanced_chats_new WHERE id = %s", (request.chat_id,))
         db.commit()
 
         # Delete the associated file, if it exists
